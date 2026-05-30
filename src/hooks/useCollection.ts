@@ -55,12 +55,14 @@ export function useCollection() {
     }
   }, [])
 
-  const toggle = useCallback(
-    async (dexNumber: number) => {
-      const wasCollected = collected.has(dexNumber)
+  const addMany = useCallback(
+    async (dexNumbers: number[]) => {
+      const unique = [...new Set(dexNumbers)].filter((n) => !collected.has(n))
+      if (unique.length === 0) return
+
+      const prev = collected
       const next = new Set(collected)
-      if (wasCollected) next.delete(dexNumber)
-      else next.add(dexNumber)
+      unique.forEach((n) => next.add(n))
 
       setCollected(next)
       setSyncError(null)
@@ -72,27 +74,58 @@ export function useCollection() {
 
       if (!supabase) return
 
-      if (wasCollected) {
-        const { error } = await supabase
-          .from('collected_cards')
-          .delete()
-          .eq('dex_number', dexNumber)
-        if (error) {
-          setSyncError(error.message)
-          setCollected(collected)
-        }
-      } else {
-        const { error } = await supabase
-          .from('collected_cards')
-          .upsert({ dex_number: dexNumber })
-        if (error) {
-          setSyncError(error.message)
-          setCollected(collected)
-        }
+      const { error } = await supabase
+        .from('collected_cards')
+        .upsert(unique.map((dex_number) => ({ dex_number })))
+
+      if (error) {
+        setSyncError(error.message)
+        setCollected(prev)
+        throw error
       }
     },
     [collected],
   )
 
-  return { collected, loading, toggle, syncError, usingLocal: !supabaseConfigured }
+  const removeMany = useCallback(
+    async (dexNumbers: number[]) => {
+      const unique = [...new Set(dexNumbers)].filter((n) => collected.has(n))
+      if (unique.length === 0) return
+
+      const prev = collected
+      const next = new Set(collected)
+      unique.forEach((n) => next.delete(n))
+
+      setCollected(next)
+      setSyncError(null)
+
+      if (!supabaseConfigured) {
+        saveLocal(next)
+        return
+      }
+
+      if (!supabase) return
+
+      const { error } = await supabase
+        .from('collected_cards')
+        .delete()
+        .in('dex_number', unique)
+
+      if (error) {
+        setSyncError(error.message)
+        setCollected(prev)
+        throw error
+      }
+    },
+    [collected],
+  )
+
+  return {
+    collected,
+    loading,
+    addMany,
+    removeMany,
+    syncError,
+    usingLocal: !supabaseConfigured,
+  }
 }

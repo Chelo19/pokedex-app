@@ -4,26 +4,44 @@ import { spriteUrl } from '../lib/pokeapi'
 type Props = {
   pokemon: PokemonEntry
   collected: boolean
-  onToggle: (dexNumber: number) => void
+  bulkMode?: 'add' | 'remove' | null
+  bulkSelected?: boolean
+  onBulkSelect?: (dexNumber: number) => void
 }
 
-export function PokemonCard({ pokemon, collected, onToggle }: Props) {
+export function PokemonCard({
+  pokemon,
+  collected,
+  bulkMode = null,
+  bulkSelected = false,
+  onBulkSelect,
+}: Props) {
   const { dexNumber, name } = pokemon
 
-  return (
-    <button
-      type="button"
-      onClick={() => onToggle(dexNumber)}
-      className={[
-        'group relative flex flex-col items-center rounded-xl border-2 p-3 text-left transition-all',
-        'hover:scale-[1.02] hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400',
-        collected
-          ? 'border-emerald-500 bg-emerald-950/40 shadow-emerald-900/30'
-          : 'border-slate-700 bg-slate-900/60 opacity-75 hover:opacity-100',
-      ].join(' ')}
-      aria-pressed={collected}
-      aria-label={`${name} #${dexNumber}${collected ? ', carta obtenida' : ', sin carta'}`}
-    >
+  const canBulkAdd = bulkMode === 'add' && !collected
+  const canBulkRemove = bulkMode === 'remove' && collected
+  const selectable = canBulkAdd || canBulkRemove
+
+  const className = [
+    'group relative flex flex-col items-center rounded-xl border-2 p-3 text-left transition-all',
+    selectable
+      ? 'cursor-pointer hover:scale-[1.02] hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400'
+      : '',
+    bulkMode !== null && !selectable ? 'opacity-40' : '',
+    bulkSelected
+      ? 'border-amber-400 bg-amber-500/20 ring-2 ring-amber-400/60'
+      : collected
+        ? 'border-emerald-500 bg-emerald-950/40 shadow-emerald-900/30'
+        : 'border-slate-700 bg-slate-900/60 opacity-75',
+  ].join(' ')
+
+  const content = (
+    <>
+      {bulkSelected && (
+        <span className="absolute left-2 top-2 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-amber-950">
+          ◉
+        </span>
+      )}
       {collected && (
         <span className="absolute right-2 top-2 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-950">
           ✓
@@ -40,7 +58,8 @@ export function PokemonCard({ pokemon, collected, onToggle }: Props) {
         loading="lazy"
         className={[
           'h-24 w-24 object-contain transition',
-          collected ? '' : 'grayscale group-hover:grayscale-0',
+          collected ? '' : 'grayscale',
+          selectable ? 'group-hover:grayscale-0' : '',
         ].join(' ')}
         onError={(e) => {
           ;(e.target as HTMLImageElement).style.visibility = 'hidden'
@@ -49,6 +68,29 @@ export function PokemonCard({ pokemon, collected, onToggle }: Props) {
       <span className="mt-1 w-full truncate text-center text-sm font-medium text-slate-100">
         {name}
       </span>
-    </button>
+    </>
+  )
+
+  if (selectable && onBulkSelect) {
+    return (
+      <button
+        type="button"
+        onClick={() => onBulkSelect(dexNumber)}
+        className={className}
+        aria-pressed={bulkSelected}
+        aria-label={`${name} #${dexNumber}, seleccionar para ${bulkMode === 'add' ? 'agregar' : 'quitar'}`}
+      >
+        {content}
+      </button>
+    )
+  }
+
+  return (
+    <article
+      className={className}
+      aria-label={`${name} #${dexNumber}${collected ? ', carta obtenida' : ', sin carta'}`}
+    >
+      {content}
+    </article>
   )
 }
