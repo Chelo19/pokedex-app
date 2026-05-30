@@ -57,12 +57,18 @@ function App() {
   }, [filtered, page])
 
   useEffect(() => {
-    setPage(1)
-  }, [search, filter])
+    setPage((current) => (current > totalPages ? totalPages : current))
+  }, [totalPages])
 
-  useEffect(() => {
-    if (page > totalPages) setPage(totalPages)
-  }, [page, totalPages])
+  function handleSearchChange(value: string) {
+    setSearch(value)
+    setPage(1)
+  }
+
+  function handleFilterChange(mode: FilterMode) {
+    setFilter(mode)
+    setPage(1)
+  }
 
   const rangeStart = filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
   const rangeEnd = Math.min(page * PAGE_SIZE, filtered.length)
@@ -118,9 +124,9 @@ function App() {
         <div className="mb-8">
           <FilterBar
             search={search}
-            onSearchChange={setSearch}
+            onSearchChange={handleSearchChange}
             filter={filter}
-            onFilterChange={setFilter}
+            onFilterChange={handleFilterChange}
           />
         </div>
 
@@ -168,6 +174,7 @@ function App() {
               ))}
             </div>
             <Pagination
+              key={`${filter}-${search}`}
               page={page}
               totalPages={totalPages}
               onPageChange={setPage}
