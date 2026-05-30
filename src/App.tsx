@@ -40,6 +40,20 @@ function App() {
       .finally(() => setListLoading(false))
   }, [])
 
+  const hasBulkSelection = bulkSelected.size > 0
+
+  useEffect(() => {
+    if (!hasBulkSelection) return
+
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasBulkSelection])
+
   const filtered = useMemo(() => {
     return pokemonList.filter((p) => {
       if (!matchesSearch(p, search)) return false
