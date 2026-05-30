@@ -30,14 +30,8 @@ function App() {
   const [bulkSelected, setBulkSelected] = useState<Set<number>>(() => new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
 
-  const {
-    collected,
-    loading: collectionLoading,
-    addMany,
-    removeMany,
-    syncError,
-    usingLocal,
-  } = useCollection()
+  const { collected, loading: collectionLoading, addMany, removeMany } =
+    useCollection()
 
   useEffect(() => {
     fetchNationalDex()
@@ -118,8 +112,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
-      
-
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         {!loading && pokemonList.length > 0 && (
           <div className="mb-8">
