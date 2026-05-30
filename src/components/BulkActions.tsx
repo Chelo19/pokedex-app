@@ -3,20 +3,70 @@ import type { PokemonEntry } from '../types/pokemon'
 
 export type BulkMode = 'add' | 'remove' | null
 
-type Props = {
+type SharedProps = {
   mode: BulkMode
   onModeChange: (mode: BulkMode) => void
   selected: Set<number>
   onSelectedChange: (selected: Set<number>) => void
-  pokemonList: PokemonEntry[]
   missingInScope: PokemonEntry[]
   collectedInScope: PokemonEntry[]
-  onConfirmAdd: (dexNumbers: number[]) => Promise<void>
-  onConfirmRemove: (dexNumbers: number[]) => Promise<void>
   busy: boolean
 }
 
-export function BulkActions({
+type TriggersProps = SharedProps
+
+type PanelProps = SharedProps & {
+  pokemonList: PokemonEntry[]
+  onConfirmAdd: (dexNumbers: number[]) => Promise<void>
+  onConfirmRemove: (dexNumbers: number[]) => Promise<void>
+}
+
+export function BulkModeTriggers({
+  mode,
+  onModeChange,
+  onSelectedChange,
+  missingInScope,
+  collectedInScope,
+  busy,
+}: TriggersProps) {
+  if (mode !== null) return null
+
+  const missingCount = missingInScope.length
+  const collectedCount = collectedInScope.length
+
+  function startAddMode() {
+    onModeChange('add')
+    onSelectedChange(new Set())
+  }
+
+  function startRemoveMode() {
+    onModeChange('remove')
+    onSelectedChange(new Set())
+  }
+
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+      <button
+        type="button"
+        onClick={startAddMode}
+        disabled={missingCount === 0 || busy}
+        className="rounded-xl border border-emerald-600/50 bg-emerald-950/40 px-5 py-2.5 text-sm font-semibold text-emerald-200 transition hover:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Agregar faltantes en lote
+      </button>
+      <button
+        type="button"
+        onClick={startRemoveMode}
+        disabled={collectedCount === 0 || busy}
+        className="rounded-xl border border-red-600/50 bg-red-950/40 px-5 py-2.5 text-sm font-semibold text-red-200 transition hover:border-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        Quitar coleccionadas en lote
+      </button>
+    </div>
+  )
+}
+
+export function BulkSelectionPanel({
   mode,
   onModeChange,
   selected,
@@ -27,7 +77,9 @@ export function BulkActions({
   onConfirmAdd,
   onConfirmRemove,
   busy,
-}: Props) {
+}: PanelProps) {
+  if (mode === null) return null
+
   const missingCount = missingInScope.length
   const collectedCount = collectedInScope.length
 
@@ -50,16 +102,6 @@ export function BulkActions({
     onSelectedChange(new Set())
   }
 
-  function startAddMode() {
-    onModeChange('add')
-    onSelectedChange(new Set())
-  }
-
-  function startRemoveMode() {
-    onModeChange('remove')
-    onSelectedChange(new Set())
-  }
-
   async function handleConfirm() {
     const ids = [...selected]
     if (ids.length === 0) return
@@ -72,31 +114,8 @@ export function BulkActions({
     }
   }
 
-  if (mode === null) {
-    return (
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-        <button
-          type="button"
-          onClick={startAddMode}
-          disabled={missingCount === 0 || busy}
-          className="rounded-xl border border-emerald-600/50 bg-emerald-950/40 px-5 py-2.5 text-sm font-semibold text-emerald-200 transition hover:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Agregar faltantes en lote
-        </button>
-        <button
-          type="button"
-          onClick={startRemoveMode}
-          disabled={collectedCount === 0 || busy}
-          className="rounded-xl border border-red-600/50 bg-red-950/40 px-5 py-2.5 text-sm font-semibold text-red-200 transition hover:border-red-500 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          Quitar coleccionadas en lote
-        </button>
-      </div>
-    )
-  }
-
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-900/80 p-4">
+    <div className="mt-8 w-full rounded-xl border border-slate-700 bg-slate-900/80 p-4">
       <p className="mb-3 text-center text-sm text-slate-300">
         {mode === 'add' ? (
           <>
@@ -120,7 +139,7 @@ export function BulkActions({
           <p className="mb-2 text-center text-xs text-slate-500">
             Revisa antes de confirmar:
           </p>
-          <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-2">
+          <ul className="max-h-96 space-y-1 overflow-y-auto rounded-lg border border-slate-700 bg-slate-950/60 px-2 py-2 sm:max-h-[28rem]">
             {selectedPokemon.map((pokemon) => (
               <li
                 key={pokemon.dexNumber}

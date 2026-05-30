@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { fetchNationalDex } from './lib/pokeapi'
 import { useCollection } from './hooks/useCollection'
 import type { FilterMode, PokemonEntry } from './types/pokemon'
-import { BulkActions, type BulkMode } from './components/BulkActions'
+import { BulkModeTriggers, BulkSelectionPanel, type BulkMode } from './components/BulkActions'
 import { FilterBar } from './components/FilterBar'
 import { Pagination } from './components/Pagination'
 import { ProgressBar } from './components/ProgressBar'
@@ -58,10 +58,6 @@ function App() {
 
   useEffect(() => {
     setPage(1)
-  }, [search, filter])
-
-  useEffect(() => {
-    setBulkSelected(new Set())
   }, [search, filter])
 
   useEffect(() => {
@@ -128,18 +124,15 @@ function App() {
           />
         </div>
 
-        {!loading && !listError && pokemonList.length > 0 && (
+        {!loading && !listError && pokemonList.length > 0 && bulkMode === null && (
           <div className="mx-auto mb-8 w-full max-w-3xl">
-            <BulkActions
+            <BulkModeTriggers
               mode={bulkMode}
               onModeChange={setBulkMode}
               selected={bulkSelected}
               onSelectedChange={setBulkSelected}
-              pokemonList={pokemonList}
               missingInScope={missingInScope}
               collectedInScope={collectedInScope}
-              onConfirmAdd={confirmBulkAdd}
-              onConfirmRemove={confirmBulkRemove}
               busy={bulkBusy}
             />
           </div>
@@ -179,6 +172,20 @@ function App() {
               totalPages={totalPages}
               onPageChange={setPage}
             />
+            {pokemonList.length > 0 && bulkMode !== null && (
+              <BulkSelectionPanel
+                mode={bulkMode}
+                onModeChange={setBulkMode}
+                selected={bulkSelected}
+                onSelectedChange={setBulkSelected}
+                pokemonList={pokemonList}
+                missingInScope={missingInScope}
+                collectedInScope={collectedInScope}
+                onConfirmAdd={confirmBulkAdd}
+                onConfirmRemove={confirmBulkRemove}
+                busy={bulkBusy}
+              />
+            )}
             {filtered.length === 0 && (
               <p className="py-12 text-center text-slate-500">
                 Ningún Pokémon coincide con tu búsqueda.
