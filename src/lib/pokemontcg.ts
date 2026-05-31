@@ -1,7 +1,7 @@
 import type { TcgCard, TcgSet } from '../types/tcg'
 
 const API_BASE = 'https://api.pokemontcg.io/v2'
-const CARDS_CACHE_PREFIX = 'pokemontcg-cards-v4-'
+const CARDS_CACHE_PREFIX = 'pokemontcg-cards-v5-'
 const CARDS_PAGE_SIZE = 250
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -18,6 +18,14 @@ type SetResponse = {
   }
 }
 
+type TcgPlayerPrice = {
+  low?: number
+  mid?: number
+  high?: number
+  market?: number
+  directLow?: number
+}
+
 type CardsResponse = {
   data: Array<{
     id: string
@@ -25,10 +33,40 @@ type CardsResponse = {
     number: string
     set: { id: string; name: string }
     images?: { small?: string; large?: string }
+    tcgplayer?: {
+      url?: string
+      updatedAt?: string
+      prices?: Record<string, TcgPlayerPrice>
+    }
   }>
   totalCount: number
   page: number
   pageSize: number
+}
+
+const TCGPLAYER_VARIANT_ORDER = [
+  'normal',
+  'reverseHolofoil',
+  'holofoil',
+  '1stEditionNormal',
+  '1stEditionHolofoil',
+] as const
+
+function pickTcgPlayerMarket(
+  prices?: Record<string, TcgPlayerPrice>,
+): number | undefined {
+  if (!prices) return undefined
+
+  for (const key of TCGPLAYER_VARIANT_ORDER) {
+    const market = prices[key]?.market
+    if (market != null) return market
+  }
+
+  for (const entry of Object.values(prices)) {
+    if (entry.market != null) return entry.market
+  }
+
+  return undefined
 }
 
 function apiHeaders(): HeadersInit {
@@ -86,6 +124,8 @@ export function getCachedCardsBySet(setId: string): TcgCard[] | null {
 }
 
 function mapCard(c: CardsResponse['data'][number]): TcgCard {
+  const priceUsd = pickTcgPlayerMarket(c.tcgplayer?.prices)
+
   return {
     id: c.id,
     name: c.name,
@@ -93,7 +133,23 @@ function mapCard(c: CardsResponse['data'][number]): TcgCard {
     setId: c.set.id,
     setName: c.set.name,
     imageUrl: c.images?.large ?? c.images?.small ?? '',
+    ...(priceUsd != null && { priceUsd }),
+    ...(c.tcgplayer?.updatedAt && { priceUpdatedAt: c.tcgplayer.updatedAt }),
+    ...(c.tcgplayer?.url && { priceUrl: c.tcgplayer.url }),
   }
+}
+
+const usdFormat = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+})
+
+/** Precio TCGPlayer (USD) para la UI. */
+export function formatCardPrice(card: TcgCard): string | null {
+  if (card.priceUsd == null) return null
+  return usdFormat.format(card.priceUsd)
 }
 
 /** Cartas de un set. La API v2 filtra con `q=set.id:xxx`, no con `set.id=` en la URL. */

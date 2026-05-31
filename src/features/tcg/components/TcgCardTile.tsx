@@ -1,3 +1,4 @@
+import { formatCardPrice } from '../../../lib/pokemontcg'
 import type { TcgCard } from '../../../types/tcg'
 import type { TcgBulkMode } from './TcgBulkActions'
 
@@ -19,6 +20,7 @@ export function TcgCardTile({
   const canBulkAdd = bulkMode === 'add' && !collected
   const canBulkRemove = bulkMode === 'remove' && collected
   const selectable = canBulkAdd || canBulkRemove
+  const priceLabel = formatCardPrice(card)
 
   const className = [
     'group relative flex flex-col overflow-hidden rounded-xl border-2 text-left transition-all',
@@ -60,6 +62,50 @@ export function TcgCardTile({
       <div className="px-2 py-2">
         <p className="font-mono text-xs text-slate-400">#{card.number}</p>
         <p className="truncate text-sm font-medium text-slate-100">{card.name}</p>
+        {priceLabel ? (
+          card.priceUrl && !selectable ? (
+            <a
+              href={card.priceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-0.5 block text-xs font-medium text-violet-300 hover:text-violet-200 hover:underline"
+            >
+              {priceLabel}
+            </a>
+          ) : (
+            <p
+              role={card.priceUrl ? 'link' : undefined}
+              tabIndex={card.priceUrl ? 0 : undefined}
+              onClick={
+                card.priceUrl
+                  ? (e) => {
+                      e.stopPropagation()
+                      window.open(card.priceUrl, '_blank', 'noopener,noreferrer')
+                    }
+                  : undefined
+              }
+              onKeyDown={
+                card.priceUrl
+                  ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        window.open(card.priceUrl, '_blank', 'noopener,noreferrer')
+                      }
+                    }
+                  : undefined
+              }
+              className={[
+                'mt-0.5 text-xs font-medium text-violet-300/90',
+                card.priceUrl ? 'cursor-pointer hover:text-violet-200 hover:underline' : '',
+              ].join(' ')}
+            >
+              {priceLabel}
+            </p>
+          )
+        ) : (
+          <p className="mt-0.5 text-xs text-slate-600">Sin precio</p>
+        )}
       </div>
     </>
   )
