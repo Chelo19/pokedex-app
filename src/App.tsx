@@ -7,17 +7,12 @@ import { FilterBar } from './components/FilterBar'
 import { Pagination } from './components/Pagination'
 import { ProgressBar } from './components/ProgressBar'
 import { PokemonCard } from './components/PokemonCard'
+import { ScannerPage } from './features/scanner/ScannerPage'
+import { pokemonMatchesQuery } from './lib/searchPokemon'
 
 const PAGE_SIZE = 9
 
-function matchesSearch(pokemon: PokemonEntry, query: string): boolean {
-  const q = query.trim().toLowerCase()
-  if (!q) return true
-  if (/^\d+$/.test(q)) {
-    return String(pokemon.dexNumber).includes(q)
-  }
-  return pokemon.name.toLowerCase().includes(q)
-}
+type AppView = 'collection' | 'scanner'
 
 function App() {
   const [pokemonList, setPokemonList] = useState<PokemonEntry[]>([])
@@ -29,6 +24,8 @@ function App() {
   const [bulkMode, setBulkMode] = useState<BulkMode>(null)
   const [bulkSelected, setBulkSelected] = useState<Set<number>>(() => new Set())
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [view, setView] = useState<AppView>('collection')
+  const [scannerBusy, setScannerBusy] = useState(false)
 
   const { collected, loading: collectionLoading, addMany, removeMany } =
     useCollection()
@@ -56,7 +53,7 @@ function App() {
 
   const filtered = useMemo(() => {
     return pokemonList.filter((p) => {
-      if (!matchesSearch(p, search)) return false
+      if (!pokemonMatchesQuery(p, search)) return false
       if (filter === 'collected') return collected.has(p.dexNumber)
       if (filter === 'missing') return !collected.has(p.dexNumber)
       return true
@@ -124,7 +121,28 @@ function App() {
     }
   }
 
+  async function handleScannerAdd(dexNumber: number) {
+    setScannerBusy(true)
+    try {
+      await addMany([dexNumber])
+    } finally {
+      setScannerBusy(false)
+    }
+  }
+
   const loading = listLoading || collectionLoading
+
+  if (view === 'scanner' && !loading && !listError && pokemonList.length > 0) {
+    return (
+      <ScannerPage
+        pokemonList={pokemonList}
+        collected={collected}
+        onAdd={handleScannerAdd}
+        onBack={() => setView('collection')}
+        busy={scannerBusy}
+      />
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
@@ -135,13 +153,24 @@ function App() {
           </div>
         )}
 
-        <div className="mb-8">
+        <div className="mb-8 flex flex-col gap-4">
           <FilterBar
             search={search}
             onSearchChange={handleSearchChange}
             filter={filter}
             onFilterChange={handleFilterChange}
           />
+          {!loading && !listError && pokemonList.length > 0 && (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={() => setView('scanner')}
+                className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-6 py-2.5 text-sm font-semibold text-amber-200 transition hover:border-amber-500 hover:bg-amber-500/20"
+              >
+                Modo escáner (jig + cámara)
+              </button>
+            </div>
+          )}
         </div>
 
         {!loading && !listError && pokemonList.length > 0 && bulkMode === null && (
